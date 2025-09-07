@@ -1,23 +1,29 @@
 import './globals.css'
+
+import { GeistMono } from 'geist/font/mono'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { GeistMono } from 'geist/font/mono'
+import type { ReactNode } from 'react'
+
 import PWARegister from '@/components/PWARegister'
 
 const inter = Inter({ subsets: ['latin'] })
-const geistMono = GeistMono({ subsets: ['latin'], variable: '--font-geist-mono' })
+// GeistMono from the `geist` package is a pre-configured font instance
 
 export const metadata: Metadata = {
-  title: 'DocPackr',
+  title: process.env.NEXT_PUBLIC_APP_NAME || 'DocPackr',
   description: 'Private, offline-first document packer',
   manifest: '/manifest.webmanifest',
   themeColor: '#0b1020',
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} ${geistMono.variable}`}>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
+      <body className={`${inter.className} ${GeistMono.variable}`}>
         <PWARegister />
         {children}
       </body>

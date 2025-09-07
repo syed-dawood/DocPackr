@@ -1,7 +1,7 @@
-"use client"
+'use client'
+import { Button } from '@/components/ui/button'
 import { prettyBytes } from '@/lib/format'
 import { FileItem } from '@/lib/types'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -37,11 +37,16 @@ export default function FileTable({ items, selectedId, onSelect, onRemove, onSug
           {items.map((it) => (
             <tr
               key={it.id}
-              className={cn('border-t hover:bg-accent/30 cursor-pointer', selectedId === it.id && 'bg-accent/30')}
+              className={cn(
+                'border-t hover:bg-accent/30 cursor-pointer',
+                selectedId === it.id && 'bg-accent/30',
+              )}
               onClick={() => onSelect(it.id)}
               aria-selected={selectedId === it.id}
             >
-              <td className="px-4 py-3 truncate" title={it.name}>{it.name}</td>
+              <td className="truncate px-4 py-3" title={it.name}>
+                {it.name}
+              </td>
               <td className="px-4 py-3">
                 <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs">
                   {it.kind.toUpperCase()}
@@ -52,27 +57,51 @@ export default function FileTable({ items, selectedId, onSelect, onRemove, onSug
                 {it.finalBytes
                   ? `${prettyBytes(it.finalBytes)} (${delta(it.originalBytes, it.finalBytes)})`
                   : it.estBytes
-                  ? `${prettyBytes(it.estBytes)} (${delta(it.originalBytes, it.estBytes)})`
-                  : '—'}
+                    ? `${prettyBytes(it.estBytes)} (${delta(it.originalBytes, it.estBytes)})`
+                    : '—'}
               </td>
               <td className="px-4 py-3">
                 {it.serverRecommended ? (
-                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-secondary">lightly optimized / server recommended</span>
+                  <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs">
+                    lightly optimized / server recommended
+                  </span>
                 ) : (
-                  <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs',
-                    it.status === 'queued' && 'bg-secondary',
-                    it.status === 'ready' && 'bg-primary text-primary-foreground',
-                    it.status === 'error' && 'bg-red-600 text-white'
-                  )}>
+                  <span
+                    className={cn(
+                      'inline-flex items-center rounded-full px-2 py-0.5 text-xs',
+                      it.status === 'queued' && 'bg-secondary',
+                      it.status === 'ready' && 'bg-primary text-primary-foreground',
+                      it.status === 'error' && 'bg-red-600 text-white',
+                    )}
+                  >
                     {it.status === 'queued' ? 'Queued' : it.status === 'ready' ? 'Ready' : 'Error'}
                   </span>
                 )}
               </td>
-              <td className="px-4 py-3 text-right space-x-1">
+              <td className="space-x-1 px-4 py-3 text-right">
                 {onSuggest && (
-                  <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onSuggest(it.id) }} title="Suggest from OCR">✨ Suggest</Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onSuggest(it.id)
+                    }}
+                    title="Suggest from OCR"
+                  >
+                    ✨ Suggest
+                  </Button>
                 )}
-                <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onRemove(it.id) }}>Remove</Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onRemove(it.id)
+                  }}
+                >
+                  Remove
+                </Button>
               </td>
             </tr>
           ))}

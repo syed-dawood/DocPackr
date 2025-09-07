@@ -1,5 +1,6 @@
 import { isoDate } from '@/lib/format'
 
+// eslint-disable-next-line no-control-regex
 const ILLEGAL = /[\u0000-\u001f\u007f<>:"/\\|?*]+/g
 
 function normalizeDiacritics(s: string): string {
@@ -8,7 +9,10 @@ function normalizeDiacritics(s: string): string {
 
 function slugify(s: string): string {
   const t = normalizeDiacritics(s).toLowerCase()
-  return t.replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '')
+  return t
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
 function upper(s: string): string {
@@ -38,7 +42,7 @@ function ensurePdf(name: string): string {
 }
 
 function evalAtom(atom: string, fields: Record<string, string>): string {
-  const mStr = atom.match(/^['\"](.*)['\"]$/)
+  const mStr = atom.match(/^['"](.*)['"]$/)
   if (mStr) return mStr[1]
   const key = atom.trim()
   return fields[key] ?? ''
@@ -72,7 +76,10 @@ export function renderTemplate(template: string, ctx: Record<string, string>): s
   const replaced = template.replace(/\{\{([^}]+)\}\}/g, (_, inner: string) => {
     const expr = inner.trim()
     // fallback chain with ||
-    const parts = expr.split('||').map((p) => p.trim()).filter(Boolean)
+    const parts = expr
+      .split('||')
+      .map((p) => p.trim())
+      .filter(Boolean)
     for (const part of parts) {
       const val = evalExpr(part, fields)
       if (val && val.trim().length > 0) return val

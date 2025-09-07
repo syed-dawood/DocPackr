@@ -30,14 +30,14 @@ Private, offline-first document packer. Drag/drop PDFs & images → rename by sa
 
 ## How It Works
 
-1) Ingest: drag/drop/paste via `src/components/DropBox.tsx`
-2) Hints: `src/lib/smart/hints.ts` infers `DocType`, `Side`, `DateISO` from filename/EXIF; optional OCR for small files
-3) Template: `src/lib/template.ts` renders safe names with fallbacks/funcs; validated and capped length
-4) Compression: 
+1. Ingest: drag/drop/paste via `src/components/DropBox.tsx`
+2. Hints: `src/lib/smart/hints.ts` infers `DocType`, `Side`, `DateISO` from filename/EXIF; optional OCR for small files
+3. Template: `src/lib/template.ts` renders safe names with fallbacks/funcs; validated and capped length
+4. Compression:
    - Images: `src/lib/compress/image.ts` → JPEG/WebP downscale; `pdf-lib` wraps to one‑page PDF
    - PDFs: `src/lib/compress/pdf.ts` light save; text‑only PDFs flagged for server compression
-5) Pack: `src/lib/pack.ts` zips files, writes `manifest.txt`, computes `SHA-256` via `src/lib/hash.ts`
-6) Offline/PWA: `public/sw.js` caches shell; registered in `src/components/PWARegister.tsx`
+5. Pack: `src/lib/pack.ts` zips files, writes `manifest.txt`, computes `SHA-256` via `src/lib/hash.ts`
+6. Offline/PWA: `public/sw.js` caches shell; registered in `src/components/PWARegister.tsx`
 
 ![Home](docs/shots/home.png)
 
@@ -84,6 +84,18 @@ pnpm build && pnpm start
 - Fly.io (.NET service one‑liner): `fly launch --now` (from your .NET service folder)
 
 `vercel.json` includes `{ "cleanUrls": true }`.
+
+## Deploy (Vercel)
+
+- Required env (Project Settings → Environment Variables):
+  - NEXT_PUBLIC_APP_NAME=DocPackr
+  - NEXT_PUBLIC_OCR_ENABLED=true
+  - NEXT_PUBLIC_AI_ENABLED=false
+  - NEXT_PUBLIC_API_BASE=
+  - DOCSIGN_PUBLIC_KEY=
+  - (optional server-side) OPENAI_API_KEY
+- Build: `pnpm build`
+- Install: `pnpm i --frozen-lockfile`
 
 ## License
 

@@ -1,7 +1,8 @@
-"use client"
+'use client'
 import { useEffect, useMemo, useState } from 'react'
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { isoDate } from '@/lib/format'
 import { renderTemplate } from '@/lib/template'
 import { FileItem } from '@/lib/types'
@@ -54,26 +55,40 @@ export default function TemplateEditor({ value, onChange, selected }: Props) {
       <CardHeader>
         <CardTitle>Template</CardTitle>
         <CardDescription>
-          Use tokens like <code>{'{{First}}'}</code>, <code>{'{{Last}}'}</code>, <code>{'{{DocType}}'}</code>, <code>{'{{Side}}'}</code>, <code>{'{{DateISO}}'}</code>.
-          Functions: <code>{'{{slug(Last)}}'}</code>, <code>{'{{upper(DocType)}}'}</code>. Fallback: <code>{'{{First||Last}}'}</code>.
+          Use tokens like <code>{'{{First}}'}</code>, <code>{'{{Last}}'}</code>,{' '}
+          <code>{'{{DocType}}'}</code>, <code>{'{{Side}}'}</code>, <code>{'{{DateISO}}'}</code>.
+          Functions: <code>{'{{slug(Last)}}'}</code>, <code>{'{{upper(DocType)}}'}</code>. Fallback:{' '}
+          <code>{'{{First||Last}}'}</code>.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-center gap-2">
-          <label htmlFor="common-tpl" className="text-sm text-muted-foreground">Common:</label>
+          <label htmlFor="common-tpl" className="text-sm text-muted-foreground">
+            Common:
+          </label>
           <select
             id="common-tpl"
             className="h-10 rounded-xl border bg-background px-3 text-sm"
-            onChange={(e) => { setTpl(e.target.value); onChange(e.target.value) }}
+            onChange={(e) => {
+              setTpl(e.target.value)
+              onChange(e.target.value)
+            }}
             value={tpl}
           >
-            <option value="{{Last}}_{{First}}_{{DocType}}_{{Side}}.pdf">{{'{{Last}}_{{First}}_{{DocType}}_{{Side}}.pdf'}}</option>
-            <option value="{{DateISO}}_{{DocType}}_{{Last}}.pdf">{{'{{DateISO}}_{{DocType}}_{{Last}}.pdf'}}</option>
+            <option value="{{Last}}_{{First}}_{{DocType}}_{{Side}}.pdf">
+              {'{{Last}}_{{First}}_{{DocType}}_{{Side}}.pdf'}
+            </option>
+            <option value="{{DateISO}}_{{DocType}}_{{Last}}.pdf">
+              {'{{DateISO}}_{{DocType}}_{{Last}}.pdf'}
+            </option>
           </select>
         </div>
         <Input
           value={tpl}
-          onChange={(e) => { setTpl(e.target.value); onChange(e.target.value) }}
+          onChange={(e) => {
+            setTpl(e.target.value)
+            onChange(e.target.value)
+          }}
           placeholder="{{Last}}_{{First}}_{{DocType}}_{{Side}}_{{DateISO}}.pdf"
           aria-label="Rename template"
         />

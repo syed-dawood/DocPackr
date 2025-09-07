@@ -14,7 +14,9 @@ function analyzePdfBytes(bytes: Uint8Array): 'image-only' | 'text' | 'mixed' | '
   const slice = bytes.subarray(0, Math.min(bytes.length, 1_500_000))
   let txt = ''
   try {
-    txt = Array.from(slice).map((c) => (c >= 32 && c <= 126 ? String.fromCharCode(c) : ' ')).join('')
+    txt = Array.from(slice)
+      .map((c) => (c >= 32 && c <= 126 ? String.fromCharCode(c) : ' '))
+      .join('')
   } catch {
     return 'unknown'
   }
@@ -34,7 +36,7 @@ export async function compressPdfArrayBuffer(input: ArrayBuffer): Promise<PdfCom
   // Light optimization: reload & save with object streams to reduce overhead
   const doc = await PDFDocument.load(input, { ignoreEncryption: true })
   const saved = await doc.save({ useObjectStreams: true, addDefaultPage: false })
-  const blob = new Blob([saved], { type: 'application/pdf' })
+  const blob = new Blob([saved as unknown as BlobPart], { type: 'application/pdf' })
   const finalBytes = blob.size
 
   let note = 'lightly optimized'
@@ -46,4 +48,3 @@ export async function compressPdfArrayBuffer(input: ArrayBuffer): Promise<PdfCom
 
   return { blob, originalBytes, finalBytes, mode: kind, serverRecommended, note }
 }
-

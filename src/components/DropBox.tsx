@@ -1,5 +1,7 @@
-"use client"
+'use client'
+import React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -15,10 +17,12 @@ export default function DropBox({ onFiles, disabled }: Props) {
   const handleFiles = useCallback(
     (files: FileList | File[]) => {
       const arr = Array.from(files)
-      const filtered = arr.filter((f) => /^(application\/pdf|image\//).test(f.type) || /\.(pdf|png|jpe?g|webp|gif|bmp|tiff?)$/i.test(f.name))
+      const mimeOk = /^(application\/pdf|image\/)/
+      const extOk = /\.(pdf|png|jpe?g|webp|gif|bmp|tiff?)$/i
+      const filtered = arr.filter((f) => mimeOk.test(f.type) || extOk.test(f.name))
       if (filtered.length) onFiles(filtered)
     },
-    [onFiles]
+    [onFiles],
   )
 
   const onDrop = useCallback(
@@ -32,7 +36,7 @@ export default function DropBox({ onFiles, disabled }: Props) {
         e.dataTransfer.clearData()
       }
     },
-    [disabled, handleFiles]
+    [disabled, handleFiles],
   )
 
   const onPaste = useCallback(
@@ -47,7 +51,7 @@ export default function DropBox({ onFiles, disabled }: Props) {
       }
       if (files.length) onFiles(files)
     },
-    [disabled, onFiles]
+    [disabled, onFiles],
   )
 
   useEffect(() => {
@@ -66,7 +70,7 @@ export default function DropBox({ onFiles, disabled }: Props) {
       className={cn(
         'rounded-2xl border-2 border-dashed p-8 text-center transition-colors',
         over ? 'border-primary bg-primary/5' : 'border-border',
-        disabled && 'opacity-60 pointer-events-none'
+        disabled && 'opacity-60 pointer-events-none',
       )}
       aria-disabled={disabled}
       aria-label="Drop files here"
@@ -89,4 +93,3 @@ export default function DropBox({ onFiles, disabled }: Props) {
     </div>
   )
 }
-

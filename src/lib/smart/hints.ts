@@ -1,6 +1,7 @@
-import { isoDate } from '@/lib/format'
 import { load as loadExif } from 'exifreader'
 import { createWorker } from 'tesseract.js'
+
+import { isoDate } from '@/lib/format'
 
 export type HintResult = Partial<{ DocType: string; Side: string; DateISO: string }>
 
@@ -24,12 +25,16 @@ async function exifDateISO(file: File): Promise<string | undefined> {
   if (!file.type.startsWith('image/')) return undefined
   try {
     const tags = await loadExif(await file.arrayBuffer())
-    const d = (tags?.DateTimeOriginal?.description || tags?.CreateDate?.description) as string | undefined
+    const d = (tags?.DateTimeOriginal?.description || tags?.CreateDate?.description) as
+      | string
+      | undefined
     if (!d) return undefined
     // Common formats: '2024:09:06 12:34:56'
     const m = d.match(/^(\d{4}):?(\d{2}):?(\d{2})/)
     if (m) return `${m[1]}-${m[2]}-${m[3]}`
-  } catch {}
+  } catch {
+    /* empty */
+  }
   return undefined
 }
 
@@ -44,8 +49,8 @@ function mapKeywordsToDoc(text: string): HintResult {
 
 function mapKeywordsToSide(text: string): HintResult {
   const t = text.toLowerCase()
-  if (/united states of america|department of state|passport/i.test(text)) return { Side: 'Front' }
-  if (/<<</.test(text) || /machine readable zone|mrz/i.test(text)) return { Side: 'Back' }
+  if (/united states of america|department of state|passport/i.test(t)) return { Side: 'Front' }
+  if (/<<</.test(t) || /machine readable zone|mrz/i.test(t)) return { Side: 'Back' }
   return {}
 }
 
@@ -54,7 +59,10 @@ export async function inferHints(file: File, opts: { ocr: boolean }): Promise<Hi
   // Filename fast path
   const lower = file.name.toLowerCase()
   for (const { re, dt } of FILE_REGEX) {
-    if (re.test(lower)) { hints.DocType = dt; break }
+    if (re.test(lower)) {
+      hints.DocType = dt
+      break
+    }
   }
   const sideName = sideFromName(lower)
   if (sideName) hints.Side = sideName
@@ -69,7 +77,13 @@ export async function inferHints(file: File, opts: { ocr: boolean }): Promise<Hi
   if (canOCR) {
     if (file.type.startsWith('image/')) {
       try {
-        const worker = await createWorker()
+        type TesseractWorker = {
+          loadLanguage: (lang: string) => Promise<void>
+          initialize: (lang: string) => Promise<void>
+          recognize: (input: unknown) => Promise<{ data: { text?: string } }>
+          terminate: () => Promise<void>
+        }
+        const worker = (await createWorker()) as unknown as TesseractWorker
         await worker.loadLanguage('eng')
         await worker.initialize('eng')
         const { data } = await worker.recognize(file)
@@ -78,20 +92,25 @@ export async function inferHints(file: File, opts: { ocr: boolean }): Promise<Hi
         const dHint = mapKeywordsToDoc(text)
         const sHint = mapKeywordsToSide(text)
         Object.assign(hints, dHint, sHint)
-      } catch {}
+      } catch (e) {
+        void e
+      }
     } else if (file.type === 'application/pdf') {
       try {
         // Simple text scan heuristic for text PDFs
         const buf = new Uint8Array(await file.arrayBuffer())
         const slice = buf.subarray(0, Math.min(buf.length, 1_500_000))
-        const text = Array.from(slice).map((c) => (c >= 32 && c <= 126 ? String.fromCharCode(c) : ' ')).join('')
+        const text = Array.from(slice)
+          .map((c) => (c >= 32 && c <= 126 ? String.fromCharCode(c) : ' '))
+          .join('')
         const dHint = mapKeywordsToDoc(text)
         const sHint = mapKeywordsToSide(text)
         Object.assign(hints, dHint, sHint)
-      } catch {}
+      } catch (e) {
+        void e
+      }
     }
   }
 
   return hints
 }
-

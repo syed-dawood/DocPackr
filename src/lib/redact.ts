@@ -19,7 +19,9 @@ export async function redactForPack(file: File): Promise<RedactionResult> {
   return await redactImage(file)
 }
 
-export async function generateRedactedPreview(file: File): Promise<{ original: Blob; redacted: Blob; masked: boolean }> {
+export async function generateRedactedPreview(
+  file: File,
+): Promise<{ original: Blob; redacted: Blob; masked: boolean }> {
   if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
     const { originalPng, redactedPng, masked } = await rasterizeAndRedactPdfPreview(file)
     return { original: originalPng, redacted: redactedPng, masked }
@@ -36,7 +38,9 @@ async function redactImage(file: File): Promise<RedactionResult> {
   const ctx = canvas.getContext('2d')!
   ctx.drawImage(img, 0, 0)
   const masked = await drawRedactionsOnCanvas(canvas)
-  const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b as Blob), 'image/jpeg', 0.9))
+  const blob: Blob = await new Promise((res) =>
+    canvas.toBlob((b) => res(b as Blob), 'image/jpeg', 0.9),
+  )
   return { blob, masked }
 }
 
@@ -44,11 +48,21 @@ async function redactPdfFirstPage(file: File): Promise<RedactionResult> {
   const bytes = await file.arrayBuffer()
   const src = await PDFDocument.load(bytes, { ignoreEncryption: true })
   const page1 = src.getPage(0)
-  const [w, h] = page1.getSize ? page1.getSize() : [page1.getWidth(), page1.getHeight()]
+  const size1: { width: number; height: number } =
+    'getSize' in page1
+      ? (page1 as unknown as { getSize(): { width: number; height: number } }).getSize()
+      : {
+          width: (page1 as unknown as { getWidth(): number }).getWidth(),
+          height: (page1 as unknown as { getHeight(): number }).getHeight(),
+        }
+  const w = size1.width
+  const h = size1.height
 
   // Rasterize first page via canvas using PDF.js would be ideal; fallback: create a blank canvas and rely on OCR text heuristic
   // Since we may not have PDF.js available at runtime always, we will approximate by masking bottom strip when MRZ detected via text scan
-  const textSlice = stringFromBytes(new Uint8Array(bytes).subarray(0, Math.min(bytes.byteLength, 1_500_000)))
+  const textSlice = stringFromBytes(
+    new Uint8Array(bytes).subarray(0, Math.min(bytes.byteLength, 1_500_000)),
+  )
 
   const canvas = document.createElement('canvas')
   canvas.width = Math.max(1, Math.floor(w))
@@ -78,16 +92,28 @@ async function redactPdfFirstPage(file: File): Promise<RedactionResult> {
   const pagesToCopy = await dst.copyPages(src, src.getPageIndices().slice(1))
   for (const p of pagesToCopy) dst.addPage(p)
   const outBytes = await dst.save({ useObjectStreams: true })
-  return { blob: new Blob([outBytes], { type: 'application/pdf' }), masked }
+  return { blob: new Blob([outBytes as unknown as BlobPart], { type: 'application/pdf' }), masked }
 }
 
-async function rasterizeAndRedactPdfPreview(file: File): Promise<{ originalPng: Blob; redactedPng: Blob; masked: boolean }> {
+async function rasterizeAndRedactPdfPreview(
+  file: File,
+): Promise<{ originalPng: Blob; redactedPng: Blob; masked: boolean }> {
   // Simple preview: blank white original and redacted black strip if hint present
   const bytes = await file.arrayBuffer()
   const src = await PDFDocument.load(bytes, { ignoreEncryption: true })
   const page1 = src.getPage(0)
-  const [w, h] = page1.getSize ? page1.getSize() : [page1.getWidth(), page1.getHeight()]
-  const textSlice = stringFromBytes(new Uint8Array(bytes).subarray(0, Math.min(bytes.byteLength, 1_500_000)))
+  const size: { width: number; height: number } =
+    'getSize' in page1
+      ? (page1 as unknown as { getSize(): { width: number; height: number } }).getSize()
+      : {
+          width: (page1 as unknown as { getWidth(): number }).getWidth(),
+          height: (page1 as unknown as { getHeight(): number }).getHeight(),
+        }
+  const w = size.width
+  const h = size.height
+  const textSlice = stringFromBytes(
+    new Uint8Array(bytes).subarray(0, Math.min(bytes.byteLength, 1_500_000)),
+  )
 
   const makeCanvas = (applyMask: boolean) => {
     const c = document.createElement('canvas')
@@ -107,12 +133,18 @@ async function rasterizeAndRedactPdfPreview(file: File): Promise<{ originalPng: 
 
   const { c: origCanvas } = makeCanvas(false)
   const { c: redCanvas, masked } = makeCanvas(true)
-  const originalPng: Blob = await new Promise((res) => origCanvas.toBlob((b) => res(b as Blob), 'image/png'))
-  const redactedPng: Blob = await new Promise((res) => redCanvas.toBlob((b) => res(b as Blob), 'image/png'))
+  const originalPng: Blob = await new Promise((res) =>
+    origCanvas.toBlob((b) => res(b as Blob), 'image/png'),
+  )
+  const redactedPng: Blob = await new Promise((res) =>
+    redCanvas.toBlob((b) => res(b as Blob), 'image/png'),
+  )
   return { originalPng, redactedPng, masked }
 }
 
-async function rasterizeAndRedactImagePreview(file: File): Promise<{ originalPng: Blob; redactedPng: Blob; masked: boolean }> {
+async function rasterizeAndRedactImagePreview(
+  file: File,
+): Promise<{ originalPng: Blob; redactedPng: Blob; masked: boolean }> {
   const img = await loadImageFromBlob(file)
   const canvas = document.createElement('canvas')
   canvas.width = img.naturalWidth
@@ -128,7 +160,13 @@ async function rasterizeAndRedactImagePreview(file: File): Promise<{ originalPng
 async function drawRedactionsOnCanvas(canvas: HTMLCanvasElement): Promise<boolean> {
   let masked = false
   try {
-    const worker = await createWorker()
+    type TesseractWorker = {
+      loadLanguage: (lang: string) => Promise<void>
+      initialize: (lang: string) => Promise<void>
+      recognize: (input: unknown) => Promise<{ data: { text?: string; words?: unknown[] } }>
+      terminate: () => Promise<void>
+    }
+    const worker = (await createWorker()) as unknown as TesseractWorker
     await worker.loadLanguage('eng')
     await worker.initialize('eng')
     const { data } = await worker.recognize(canvas)
@@ -139,13 +177,22 @@ async function drawRedactionsOnCanvas(canvas: HTMLCanvasElement): Promise<boolea
       // Mask bottom MRZ strip as a fallback
       rects.push({ x0: 0, y0: canvas.height * 0.8, x1: canvas.width, y1: canvas.height })
     }
-    const words = (data.words || []) as any[]
+    type OcrWord = {
+      text?: string | number
+      word?: string | number
+      bbox?: Box
+    } & Partial<Box>
+    const words = (data.words || []) as OcrWord[]
     for (const w of words) {
       const t = (w.text || w.word || '').toString()
       if (!t) continue
       if (SSN_RE.test(t) || ANUM_RE.test(t) || /<{3,}/.test(t)) {
-        const b = w.bbox || w
-        rects.push({ x0: b.x0, y0: b.y0, x1: b.x1, y1: b.y1 })
+        const b = (w.bbox || w) as Partial<Box>
+        const x0 = Number(b.x0 ?? 0)
+        const y0 = Number(b.y0 ?? 0)
+        const x1 = Number(b.x1 ?? x0 + 1)
+        const y1 = Number(b.y1 ?? y0 + 1)
+        rects.push({ x0, y0, x1, y1 })
       }
     }
     if (rects.length) {
@@ -195,4 +242,3 @@ async function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
     URL.revokeObjectURL(url)
   }
 }
-

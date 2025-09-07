@@ -51,6 +51,8 @@ export function applyTemplate(tpl: string, ctx: Record<string, string>): string 
 }
 
 export function sanitize(v: string): string {
-  return v.replace(/[^a-z0-9_\-]+/gi, ' ').trim().replace(/\s+/g, '_')
+  return v
+    .replace(/[^a-z0-9_-]+/gi, ' ')
+    .trim()
+    .replace(/\s+/g, '_')
 }
-

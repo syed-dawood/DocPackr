@@ -1,12 +1,13 @@
 import JSZip from 'jszip'
 import { PDFDocument } from 'pdf-lib'
+
 import { compressImageBlob } from '@/lib/compress/image'
 import { compressPdfArrayBuffer } from '@/lib/compress/pdf'
-import { sha256Hex } from '@/lib/hash'
-import { renderTemplate } from '@/lib/template'
 import { isoDate } from '@/lib/format'
-import type { FileItem } from '@/lib/types'
+import { sha256Hex } from '@/lib/hash'
 import { redactForPack } from '@/lib/redact'
+import { renderTemplate } from '@/lib/template'
+import type { FileItem } from '@/lib/types'
 
 export type PackResult = {
   zipBlob: Blob
@@ -24,7 +25,7 @@ export async function packFiles(
   items: FileItem[],
   template: string,
   onProgress?: (pct: number) => void,
-  opts?: { redact?: boolean }
+  opts?: { redact?: boolean },
 ): Promise<PackResult> {
   const zip = new JSZip()
   const manifestLines: string[] = []
@@ -57,9 +58,13 @@ export async function packFiles(
       const page = pdf.addPage([width, height])
       page.drawImage(embedded, { x: 0, y: 0, width, height })
       const pdfBytes = await pdf.save({ useObjectStreams: true })
-      outBlob = new Blob([pdfBytes], { type: 'application/pdf' })
+      outBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' })
       finalBytes = outBlob.size
-      newName = renderTemplate(template, { ...it.meta, Index1: String(i + 1), DateISO: it.meta.DateISO || isoDate() })
+      newName = renderTemplate(template, {
+        ...it.meta,
+        Index1: String(i + 1),
+        DateISO: it.meta.DateISO || isoDate(),
+      })
     } else {
       let pdfInput = it.file
       if (opts?.redact) {
@@ -71,7 +76,11 @@ export async function packFiles(
       finalBytes = res.finalBytes
       serverRecommended = res.serverRecommended
       note = res.note
-      newName = renderTemplate(template, { ...it.meta, Index1: String(i + 1), DateISO: it.meta.DateISO || isoDate() })
+      newName = renderTemplate(template, {
+        ...it.meta,
+        Index1: String(i + 1),
+        DateISO: it.meta.DateISO || isoDate(),
+      })
     }
 
     const sha = await sha256Hex(await outBlob.arrayBuffer())
@@ -82,6 +91,10 @@ export async function packFiles(
   }
 
   zip.file('manifest.txt', manifestLines.join('\n'))
-  const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } })
+  const zipBlob = await zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 },
+  })
   return { zipBlob, manifest: manifestLines.join('\n'), updates }
 }

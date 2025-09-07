@@ -1,17 +1,17 @@
-"use client"
+'use client'
 import { useMemo, useReducer } from 'react'
+import { createWorker } from 'tesseract.js'
+
 import DropBox from '@/components/DropBox'
 import FileTable from '@/components/FileTable'
-import TemplateEditor from '@/components/TemplateEditor'
-import RedactionPreview from '@/components/RedactionPreview'
 import PackPanel from '@/components/PackPanel'
+import RedactionPreview from '@/components/RedactionPreview'
+import TemplateEditor from '@/components/TemplateEditor'
 import { estimateCompressed, guessKind, isoDate } from '@/lib/format'
-import { renderTemplate } from '@/lib/template'
-import { FileItem } from '@/lib/types'
 import { packFiles } from '@/lib/pack'
-import { inferHints } from '@/lib/smart/hints'
 import { suggestFromText } from '@/lib/smart/aiSuggest'
-import { createWorker } from 'tesseract.js'
+import { inferHints } from '@/lib/smart/hints'
+import { FileItem } from '@/lib/types'
 
 type State = {
   items: FileItem[]
@@ -83,7 +83,9 @@ function reducer(state: State, action: Action): State {
     case 'set_smart_ocr':
       return { ...state, smartOCR: action.value }
     case 'update_meta': {
-      const items = state.items.map((it) => (it.id === action.id ? { ...it, meta: { ...it.meta, ...action.meta } } : it))
+      const items = state.items.map((it) =>
+        it.id === action.id ? { ...it, meta: { ...it.meta, ...action.meta } } : it,
+      )
       return { ...state, items }
     }
     case 'set_redact':
@@ -105,17 +107,71 @@ export default function Page() {
     redact: false,
   })
 
-  const selected = useMemo(() => state.items.find((i) => i.id === state.selectedId) || null, [state.items, state.selectedId])
+  const selected = useMemo(
+    () => state.items.find((i) => i.id === state.selectedId) || null,
+    [state.items, state.selectedId],
+  )
+
+  type TesseractWord = { text?: string; word?: string }
+  type TesseractData = { text?: string; words?: TesseractWord[] }
+  type TesseractWorker = {
+    loadLanguage: (lang: string) => Promise<void>
+    initialize: (lang: string) => Promise<void>
+    recognize: (input: unknown) => Promise<{ data: TesseractData }>
+    terminate: () => Promise<void>
+  }
+
+  async function handleSuggest(id: string) {
+    const it = state.items.find((x) => x.id === id)
+    if (!it) return
+    let text = ''
+    try {
+      if (it.kind === 'image' && it.file.size < 5 * 1024 * 1024) {
+        const worker = (await createWorker()) as unknown as TesseractWorker
+        await worker.loadLanguage('eng')
+        await worker.initialize('eng')
+        const { data } = await worker.recognize(it.file)
+        await worker.terminate()
+        text = data.text || ''
+      } else if (it.kind === 'pdf') {
+        const buf = new Uint8Array(await it.file.arrayBuffer())
+        const slice = buf.subarray(0, Math.min(buf.length, 1_500_000))
+        text = Array.from(slice)
+          .map((c) => (c >= 32 && c <= 126 ? String.fromCharCode(c) : ' '))
+          .join('')
+      }
+    } catch (e) {
+      void e
+    }
+    const suggestion = await suggestFromText(text)
+    if (suggestion) {
+      const meta: Partial<FileItem['meta']> = {}
+      if (suggestion.DocType) meta.DocType = suggestion.DocType
+      if (suggestion.Side) meta.Side = suggestion.Side
+      dispatch({ type: 'update_meta', id, meta })
+    }
+  }
 
   async function handleCompressZip() {
     dispatch({ type: 'set_processing', value: true })
     dispatch({ type: 'set_progress', value: 0 })
     try {
-      const { zipBlob, updates } = await packFiles(state.items, state.template, (pct) => dispatch({ type: 'set_progress', value: pct }), { redact: state.redact })
+      const { zipBlob, updates } = await packFiles(
+        state.items,
+        state.template,
+        (pct) => dispatch({ type: 'set_progress', value: pct }),
+        { redact: state.redact },
+      )
       const updatedItems = state.items.map((it) => {
         const u = updates.find((x) => x.id === it.id)
         if (!u) return it
-        return { ...it, status: 'ready', finalBytes: u.finalBytes, serverRecommended: u.serverRecommended, note: u.note }
+        return {
+          ...it,
+          status: 'ready' as const,
+          finalBytes: u.finalBytes,
+          serverRecommended: u.serverRecommended,
+          note: u.note,
+        }
       })
       dispatch({ type: 'set_items', items: updatedItems })
       dispatch({ type: 'set_zip', blob: zipBlob })
@@ -138,7 +194,13 @@ export default function Page() {
         originalBytes,
         estBytes,
         status: 'queued',
-        meta: { First: '', Last: '', DocType: '', Side: kind === 'image' ? 'Front' : 'Front', DateISO: isoDate() },
+        meta: {
+          First: '',
+          Last: '',
+          DocType: '',
+          Side: kind === 'image' ? 'Front' : 'Front',
+          DateISO: isoDate(),
+        },
       }
     })
     dispatch({ type: 'set_items', items: [...state.items, ...prepared] })
@@ -147,7 +209,9 @@ export default function Page() {
       try {
         const hints = await inferHints(item.file, { ocr: state.smartOCR })
         dispatch({ type: 'update_meta', id: item.id, meta: hints })
-      } catch {}
+      } catch (e) {
+        void e
+      }
     }
   }
 
@@ -175,29 +239,53 @@ export default function Page() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">DocPackr</h1>
-            <p className="text-sm text-muted-foreground">Drag & drop PDFs & images, edit template, and pack.</p>
+            <p className="text-sm text-muted-foreground">
+              Drag & drop PDFs & images, edit template, and pack.
+            </p>
           </div>
           <div className="flex items-center gap-4">
-            <label className="inline-flex items-center gap-2 text-sm" title="Runs on-device OCR for small files. Uses CPU and may be slower.">
-              <input type="checkbox" className="accent-current" checked={state.smartOCR} onChange={(e) => dispatch({ type: 'set_smart_ocr', value: e.target.checked })} />
+            <label
+              className="inline-flex items-center gap-2 text-sm"
+              title="Runs on-device OCR for small files. Uses CPU and may be slower."
+            >
+              <input
+                type="checkbox"
+                className="accent-current"
+                checked={state.smartOCR}
+                onChange={(e) => dispatch({ type: 'set_smart_ocr', value: e.target.checked })}
+              />
               <span>Smart hints (OCR)</span>
             </label>
-            <label className="inline-flex items-center gap-2 text-sm" title="Masks MRZ, A-Numbers, SSNs on exported copy.">
-              <input type="checkbox" className="accent-current" checked={state.redact} onChange={(e) => dispatch({ type: 'set_redact', value: e.target.checked })} />
+            <label
+              className="inline-flex items-center gap-2 text-sm"
+              title="Masks MRZ, A-Numbers, SSNs on exported copy."
+            >
+              <input
+                type="checkbox"
+                className="accent-current"
+                checked={state.redact}
+                onChange={(e) => dispatch({ type: 'set_redact', value: e.target.checked })}
+              />
               <span>Redact sensitive fields</span>
             </label>
           </div>
         </div>
       </header>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
-          <DropBox onFiles={(files) => { void handleAddFiles(files) }} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
+          <DropBox
+            onFiles={(files) => {
+              void handleAddFiles(files)
+            }}
+          />
           <FileTable
             items={state.items}
             selectedId={state.selectedId}
             onSelect={(id) => dispatch({ type: 'select', id })}
             onRemove={(id) => dispatch({ type: 'remove_file', id })}
-            onSuggest={async (id) => { await handleSuggest(id) }}
+            onSuggest={async (id) => {
+              await handleSuggest(id)
+            }}
           />
         </div>
         <div className="space-y-4">
@@ -210,38 +298,15 @@ export default function Page() {
             onCompressZip={handleCompressZip}
             onDownloadZip={handleDownloadZip}
           />
-          <TemplateEditor value={state.template} onChange={(v) => dispatch({ type: 'set_template', value: v })} selected={selected} />
+          <TemplateEditor
+            value={state.template}
+            onChange={(v) => dispatch({ type: 'set_template', value: v })}
+            selected={selected}
+          />
           {/* Redaction preview below when enabled */}
           {state.redact && <RedactionPreview item={selected} enabled={state.redact} />}
         </div>
       </div>
     </main>
   )
-  }
-
-  async function handleSuggest(id: string) {
-    const it = state.items.find(x => x.id === id)
-    if (!it) return
-    let text = ''
-    try {
-      if (it.kind === 'image' && it.file.size < 5 * 1024 * 1024) {
-        const worker = await createWorker()
-        await worker.loadLanguage('eng')
-        await worker.initialize('eng')
-        const { data } = await worker.recognize(it.file)
-        await worker.terminate()
-        text = data.text || ''
-      } else if (it.kind === 'pdf') {
-        const buf = new Uint8Array(await it.file.arrayBuffer())
-        const slice = buf.subarray(0, Math.min(buf.length, 1_500_000))
-        text = Array.from(slice).map((c) => (c >= 32 && c <= 126 ? String.fromCharCode(c) : ' ')).join('')
-      }
-    } catch {}
-    const suggestion = await suggestFromText(text)
-    if (suggestion) {
-      const meta: any = {}
-      if (suggestion.DocType) meta.DocType = suggestion.DocType
-      if (suggestion.Side) meta.Side = suggestion.Side
-      dispatch({ type: 'update_meta', id, meta })
-    }
-  }
+}

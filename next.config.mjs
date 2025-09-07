@@ -1,16 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    optimizePackageImports: [
-      'jszip',
-      'pdf-lib',
-      'tesseract.js',
-      'exifreader',
-      'browser-image-compression'
-    ]
+    typedRoutes: true,
   },
-  reactStrictMode: true,
-};
+  images: {
+    unoptimized: true,
+  },
+}
 
-export default nextConfig;
-
+export default nextConfig

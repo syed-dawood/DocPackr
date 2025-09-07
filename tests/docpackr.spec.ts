@@ -1,4 +1,6 @@
-import { test, expect } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+
+import { expect, test } from '@playwright/test'
 import AdmZip from 'adm-zip'
 import { PDFDocument } from 'pdf-lib'
 
@@ -51,14 +53,11 @@ test.describe('DocPackr happy path', () => {
     // Wait for download to be enabled then download
     const downloadBtn = page.getByRole('button', { name: 'Download ZIP' })
     await expect(downloadBtn).toBeEnabled()
-    const [download] = await Promise.all([
-      page.waitForEvent('download'),
-      downloadBtn.click(),
-    ])
+    const [download] = await Promise.all([page.waitForEvent('download'), downloadBtn.click()])
 
     const zipPath = await download.path()
     expect(zipPath).toBeTruthy()
-    const zipData = require('fs').readFileSync(zipPath!)
+    const zipData = readFileSync(zipPath!)
     const zip = new AdmZip(zipData)
     const entries = zip.getEntries().map((e) => e.entryName)
     expect(entries).toContain('manifest.txt')
@@ -90,15 +89,11 @@ test.describe('DocPackr OCR hints', () => {
     await page.getByRole('button', { name: 'Compress & Zip' }).click()
     const downloadBtn = page.getByRole('button', { name: 'Download ZIP' })
     await expect(downloadBtn).toBeEnabled()
-    const [download] = await Promise.all([
-      page.waitForEvent('download'),
-      downloadBtn.click(),
-    ])
+    const [download] = await Promise.all([page.waitForEvent('download'), downloadBtn.click()])
     const zipPath = await download.path()
-    const zipData = require('fs').readFileSync(zipPath!)
+    const zipData = readFileSync(zipPath!)
     const zip = new AdmZip(zipData)
     const entries = zip.getEntries().map((e) => e.entryName)
     expect(entries).toContain('Passport.pdf')
   })
 })
-
