@@ -1,0 +1,10 @@
+{
+  "extends": ["next/core-web-vitals", "eslint:recommended", "prettier"],
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module"
+  },
+  "rules": {
+    "react/react-in-jsx-scope": "off"
+  }
+}
