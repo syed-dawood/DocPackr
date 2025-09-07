@@ -8,7 +8,20 @@ export type HintResult = Partial<{ DocType: string; Side: string; DateISO: strin
 const FILE_REGEX = [
   { re: /\b(i[\s_-]?20)\b/i, dt: 'I-20' },
   { re: /\b(i[\s_-]?765)\b/i, dt: 'I-765' },
+  { re: /\b(i[\s_-]?94)\b/i, dt: 'I-94' },
+  { re: /\b(i[\s_-]?983)\b/i, dt: 'I-983' },
+  { re: /\b(i[\s_-]?797)\b/i, dt: 'I-797' },
   { re: /\bead\b/i, dt: 'EAD' },
+  { re: /\btranscript\b/i, dt: 'Transcript' },
+  { re: /\bdiploma\b/i, dt: 'Diploma' },
+  { re: /\bevl\b/i, dt: 'EVL' },
+  { re: /\b(payment|receipt)\b/i, dt: 'Receipt' },
+  { re: /\bvisa\b/i, dt: 'Visa' },
+  { re: /\b(driver'?s?\s+license|driver\s+licen[cs]e|\bdl\b|id card)\b/i, dt: 'DriverLicense' },
+  { re: /\bw[-_\s]?2\b/i, dt: 'W-2' },
+  { re: /\bpay[\s-]?stub\b/i, dt: 'Paystub' },
+  { re: /\boffer\s+letter\b/i, dt: 'OfferLetter' },
+  { re: /\b(approval\s+notice|notice\s+of\s+action)\b/i, dt: 'ApprovalNotice' },
   { re: /\bpassport\b/i, dt: 'Passport' },
 ]
 
@@ -43,7 +56,22 @@ function mapKeywordsToDoc(text: string): HintResult {
   if (/\bpassport\b/.test(t)) return { DocType: 'Passport' }
   if (/\bi[-\s]?20\b/.test(t)) return { DocType: 'I-20' }
   if (/\bi[-\s]?765\b/.test(t)) return { DocType: 'I-765' }
+  if (/\bi[-\s]?94\b/.test(t)) return { DocType: 'I-94' }
+  if (/\bi[-\s]?983\b/.test(t)) return { DocType: 'I-983' }
+  if (/\bi[-\s]?797\b/.test(t) || /notice of action|approval notice/.test(t))
+    return { DocType: 'I-797' }
   if (/\bead\b/.test(t) || /employment authorization document/.test(t)) return { DocType: 'EAD' }
+  if (/\btranscript\b/.test(t)) return { DocType: 'Transcript' }
+  if (/\bdiploma\b/.test(t)) return { DocType: 'Diploma' }
+  if (/\bevl\b/.test(t) || /employment verification/i.test(t)) return { DocType: 'EVL' }
+  if (/\b(payment|receipt)\b/.test(t)) return { DocType: 'Receipt' }
+  if (/\bvisa\b/.test(t)) return { DocType: 'Visa' }
+  if (/driver'?s?\s+license|driver\s+licen[cs]e|\bdl\b|id card/.test(t))
+    return { DocType: 'DriverLicense' }
+  if (/\bw[-_\s]?2\b/.test(t)) return { DocType: 'W-2' }
+  if (/pay[\s-]?stub/.test(t)) return { DocType: 'Paystub' }
+  if (/offer\s+letter/.test(t)) return { DocType: 'OfferLetter' }
+  if (/approval\s+notice|notice\s+of\s+action/.test(t)) return { DocType: 'ApprovalNotice' }
   return {}
 }
 

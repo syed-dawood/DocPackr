@@ -32,6 +32,35 @@ export async function packFiles(
   const updates: PackResult['updates'] = []
   const total = items.length
   const nowISO = new Date().toISOString()
+  const usedNames = new Map<string, number>()
+
+  const uniqueName = (name: string): string => {
+    // Ensure a unique filename within the ZIP by appending _2, _3, ... before extension
+    const base = name.replace(/\.[^.]+$/i, '')
+    const ext = name.match(/\.[^.]+$/i)?.[0] || '.pdf'
+    if (!usedNames.has(name)) {
+      usedNames.set(name, 1)
+      return name
+    }
+    let n = (usedNames.get(name) || 1) + 1
+    let candidate = `${base}_${n}${ext}`
+    const MAX = 119
+    if (candidate.length > MAX) {
+      const keep = Math.max(1, MAX - ext.length - String(n).length - 1)
+      candidate = `${base.slice(0, keep)}_${n}${ext}`
+    }
+    while (usedNames.has(candidate)) {
+      n++
+      let next = `${base}_${n}${ext}`
+      if (next.length > MAX) {
+        const keep2 = Math.max(1, MAX - ext.length - String(n).length - 1)
+        next = `${base.slice(0, keep2)}_${n}${ext}`
+      }
+      candidate = next
+    }
+    usedNames.set(candidate, 1)
+    return candidate
+  }
 
   for (let i = 0; i < items.length; i++) {
     const it = items[i]
@@ -84,9 +113,10 @@ export async function packFiles(
     }
 
     const sha = await sha256Hex(await outBlob.arrayBuffer())
-    zip.file(newName, outBlob)
-    manifestLines.push([it.name, newName, it.originalBytes, finalBytes, sha, nowISO].join(' | '))
-    updates.push({ id: it.id, newName, finalBytes, serverRecommended, note })
+    const finalName = uniqueName(newName)
+    zip.file(finalName, outBlob)
+    manifestLines.push([it.name, finalName, it.originalBytes, finalBytes, sha, nowISO].join(' | '))
+    updates.push({ id: it.id, newName: finalName, finalBytes, serverRecommended, note })
     if (onProgress) onProgress(Math.round(((i + 1) / total) * 100))
   }
 

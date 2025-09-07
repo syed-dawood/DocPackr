@@ -81,6 +81,9 @@ export default function TemplateEditor({ value, onChange, selected }: Props) {
             <option value="{{DateISO}}_{{DocType}}_{{Last}}.pdf">
               {'{{DateISO}}_{{DocType}}_{{Last}}.pdf'}
             </option>
+            <option value="{{DocType||Side}}_{{DateISO}}_{{Index1}}.pdf">
+              {'{{DocType||Side}}_{{DateISO}}_{{Index1}}.pdf'}
+            </option>
           </select>
         </div>
         <Input

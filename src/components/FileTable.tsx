@@ -14,7 +14,7 @@ type Props = {
 
 export default function FileTable({ items, selectedId, onSelect, onRemove, onSuggest }: Props) {
   return (
-    <div className="rounded-2xl border">
+    <div className="overflow-x-auto rounded-2xl border">
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-muted-foreground">

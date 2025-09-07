@@ -22,6 +22,7 @@ type State = {
   zipBlob: Blob | null
   smartOCR: boolean
   redact: boolean
+  hinting: boolean
 }
 
 type Action =
@@ -36,6 +37,7 @@ type Action =
   | { type: 'set_smart_ocr'; value: boolean }
   | { type: 'update_meta'; id: string; meta: Partial<FileItem['meta']> }
   | { type: 'set_redact'; value: boolean }
+  | { type: 'set_hinting'; value: boolean }
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -56,7 +58,7 @@ function reducer(state: State, action: Action): State {
             First: '',
             Last: '',
             DocType: '',
-            Side: kind === 'image' ? 'Front' : 'Front',
+            Side: kind === 'image' ? 'Front' : '',
             DateISO: isoDate(),
           },
         }
@@ -90,6 +92,8 @@ function reducer(state: State, action: Action): State {
     }
     case 'set_redact':
       return { ...state, redact: action.value }
+    case 'set_hinting':
+      return { ...state, hinting: action.value }
     default:
       return state
   }
@@ -99,12 +103,13 @@ export default function Page() {
   const [state, dispatch] = useReducer(reducer, {
     items: [],
     selectedId: null,
-    template: '{{Last}}_{{First}}_{{DocType}}_{{Side}}_{{DateISO}}.pdf',
+    template: '{{DocType||Side}}_{{DateISO}}_{{Index1}}.pdf',
     processing: false,
     progress: 0,
     zipBlob: null,
     smartOCR: false,
     redact: false,
+    hinting: false,
   })
 
   const selected = useMemo(
@@ -198,13 +203,14 @@ export default function Page() {
           First: '',
           Last: '',
           DocType: '',
-          Side: kind === 'image' ? 'Front' : 'Front',
+          Side: kind === 'image' ? 'Front' : '',
           DateISO: isoDate(),
         },
       }
     })
     dispatch({ type: 'set_items', items: [...state.items, ...prepared] })
     // Hints
+    dispatch({ type: 'set_hinting', value: true })
     for (const item of prepared) {
       try {
         const hints = await inferHints(item.file, { ocr: state.smartOCR })
@@ -213,6 +219,7 @@ export default function Page() {
         void e
       }
     }
+    dispatch({ type: 'set_hinting', value: false })
   }
 
   function handleDownloadZip() {
@@ -271,8 +278,8 @@ export default function Page() {
           </div>
         </div>
       </header>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
+      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-3">
+        <div className="min-w-0 space-y-4 lg:col-span-2">
           <DropBox
             onFiles={(files) => {
               void handleAddFiles(files)
@@ -288,10 +295,11 @@ export default function Page() {
             }}
           />
         </div>
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4 self-start lg:col-span-1">
           <PackPanel
             total={state.items.length}
             processing={state.processing}
+            hinting={state.hinting}
             canCompress={state.items.length > 0}
             canDownload={!!state.zipBlob}
             progress={state.progress}
